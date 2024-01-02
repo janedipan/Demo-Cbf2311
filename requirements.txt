@@ -1,7 +1,7 @@
 casadi
 cvxopt
 do-mpc
-matplotlib
+matplotlib==3.6
 numpy
 pandas
 scipy

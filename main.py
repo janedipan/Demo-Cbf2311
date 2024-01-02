@@ -20,12 +20,13 @@ def main():
 
     # Plots
     plotter = Plotter(controller)
-    plotter.plot_results()
+    plotter.plot_results()          # trajectories.png
+    plotter.plot_path()             # path.png
+    plotter.plot_cbf()              # distance.png
     plotter.plot_predictions()
-    plotter.plot_path()
-    plotter.create_trajectories_animation()
+    # plotter.create_trajectories_animation()
     plotter.create_path_animation()
-    plotter.plot_cbf()
+    
 
     # Store results
     # util.save_mpc_results(controller)

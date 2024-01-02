@@ -55,12 +55,13 @@ Results
     <br>Path comparison
 </p>
 
-
-
-
-
 References
 ----------
-* [[1] J. Zeng, B. Zhang, and K. Sreenath, “Safety-Critical Model Predictive Control with Discrete-Time Control Barrier Function,” in 2021 American Control Conference (ACC), May 2021, pp. 3882–3889.](https://ieeexplore.ieee.org/document/9483029)
+* [[1] J. Zeng, B. Zhang, K. Sreenath, Safety-critical model predictive control with discrete-time control barrier function, 2021 American Control Conference (ACC) (2020) 3882–3889.]()
+* [[2] Z. Jian, Z. Yan, X. Lei, Z.-R. Lu, B. Lan, X. Wang, B. Liang, Dynamic control barrier function-based model predictive control to safety-critical obstacle-avoidance of mobile robot, 2023 IEEE International Conference on Robotics and Automation (ICRA) (2022) 3679–3685.]()
 
-
+修改思路
+---
+1. 在`mpc_cbf.py`文件中，有静态障碍物，动态障碍物两个标志，影响`define_mpc()`中Add safety constraints的部分，一部分处理静态障碍物的情况，一部分处理动态障碍物的情况；
+2. 需要在`config.py`文件中修改系统状态量为$[x,y,\theta] \to [x,y,\theta,\dot{x},\dot{y}]$，相应系统状态方程的系统矩阵，控制矩阵还有包括mpc的Q矩阵需要修改；
+3. 在`mpc_cbf.py`文件的`def add_cbf_constraints()`函数进行修改，添加各种cbf约束的接口；

@@ -174,14 +174,18 @@ class MPC:
             if self.controller == "MPC-DC":
                 # MPC-DC: Add obstacle avoidance constraints
                 mpc = self.add_obstacle_constraints(mpc)
-            else:
+            elif self.control_type == "MPC-SCBF":
                 # MPC-CBF: Add CBF constraints
-                mpc = self.add_cbf_constraints(mpc)
+                mpc = self.add_scbf_constraints(mpc)
+            elif self.control_type == "MPC-DCBF":
+                mpc = self.add_dcbf_constraints(mpc)
+            elif self.control_type == "MPC-ACBF":
+                mpc = self.add_acbf_constraints(mpc)
 
         mpc.setup()
         return mpc
 
-    def add_obstacle_constraints(self, mpc):
+    def add_obstacle_constraints(self, mpc:do_mpc.controller.MPC):
         """Adds the obstacle constraints to the mpc controller. (MPC-DC)
 
         Inputs:
@@ -207,7 +211,7 @@ class MPC:
 
         return mpc
 
-    def add_cbf_constraints(self, mpc):
+    def add_scbf_constraints(self, mpc:do_mpc.controller.MPC):
         """Adds the CBF constraints to the mpc controller. (MPC-CBF)
 
         Inputs:
@@ -215,14 +219,31 @@ class MPC:
         Returns:
           - mpc(do_mpc.controller.MPC): The mpc model with CBF constraints added
         """
-        cbf_constraints = self.get_cbf_constraints()
+        cbf_constraints = self.get_scbf_constraints()   # can choose scbf, dcbf, acbf, dc
         i = 0
         for cbc in cbf_constraints:
             mpc.set_nl_cons('cbf_constraint'+str(i), cbc, ub=0)
             i += 1
         return mpc
 
-    def get_cbf_constraints(self):
+    def add_dcbf_constraints(self, mpc:do_mpc.controller.MPC):
+        cbf_constraints = self.get_dcbf_constraints()   # can choose scbf, dcbf, acbf, dc
+        i = 0
+        for cbc in cbf_constraints:
+            mpc.set_nl_cons('cbf_constraint'+str(i), cbc, ub=0)
+            i += 1
+        return mpc
+
+    def add_acbf_constraints(self, mpc:do_mpc.controller.MPC):
+        cbf_constraints = self.get_acbf_constraints()   # can choose scbf, dcbf, acbf, dc
+        i = 0
+        for cbc in cbf_constraints:
+            mpc.set_nl_cons('cbf_constraint'+str(i), cbc, ub=0)
+            i += 1
+        return mpc
+
+    # 静态控制屏障函数
+    def get_scbf_constraints(self):
         """Computes the CBF constraints for all obstacles.
 
         Returns:
@@ -234,12 +255,71 @@ class MPC:
 
         # Compute CBF constraints
         cbf_constraints = []
+        # 静态障碍物
         if self.static_obstacles_on:
             for obs in self.obs:
                 h_k1 = self.h(x_k1, obs)
                 h_k = self.h(self.model.x['x'], obs)
                 cbf_constraints.append(-h_k1 + (1-self.gamma)*h_k)
+        # 动态障碍物
+        if self.moving_obstacles_on:
+            for i in range(len(self.moving_obs)):
+                obs = (self.model.tvp['x_moving_obs'+str(i)], self.model.tvp['y_moving_obs'+str(i)], self.moving_obs[i][4])
+                h_k1 = self.h(x_k1, obs)
+                h_k = self.h(self.model.x['x'], obs)
+                cbf_constraints.append(-h_k1 + (1-self.gamma)*h_k)
 
+        return cbf_constraints
+
+    # 动态控制屏障函数
+    def get_dcbf_constraints(self):
+        """Computes the CBF constraints for all obstacles.
+
+        Returns:
+          - cbf_constraints(list): The CBF constraints for each obstacle
+        """
+        # Get state vector x_{t+k+1}
+        B = self.get_sys_matrix_B(self.model.x['x'])
+        x_k1 = self.model.x['x'] + B@self.model.u['u']*self.Ts
+
+        # Compute CBF constraints
+        cbf_constraints = []
+        # 静态障碍物
+        if self.static_obstacles_on:
+            for obs in self.obs:
+                h_k1 = self.h(x_k1, obs)
+                h_k = self.h(self.model.x['x'], obs)
+                cbf_constraints.append(-h_k1 + (1-self.gamma)*h_k)
+        # 动态障碍物
+        if self.moving_obstacles_on:
+            for i in range(len(self.moving_obs)):
+                obs = (self.model.tvp['x_moving_obs'+str(i)], self.model.tvp['y_moving_obs'+str(i)], self.moving_obs[i][4])
+                h_k1 = self.h(x_k1, obs)
+                h_k = self.h(self.model.x['x'], obs)
+                cbf_constraints.append(-h_k1 + (1-self.gamma)*h_k)
+
+        return cbf_constraints
+
+    # 超前控制屏障函数(Ours)
+    def get_acbf_constraints(self):
+        """Computes the CBF constraints for all obstacles.
+
+        Returns:
+          - cbf_constraints(list): The CBF constraints for each obstacle
+        """
+        # Get state vector x_{t+k+1}
+        B = self.get_sys_matrix_B(self.model.x['x'])
+        x_k1 = self.model.x['x'] + B@self.model.u['u']*self.Ts
+
+        # Compute CBF constraints
+        cbf_constraints = []
+        # 静态障碍物
+        if self.static_obstacles_on:
+            for obs in self.obs:
+                h_k1 = self.h(x_k1, obs)
+                h_k = self.h(self.model.x['x'], obs)
+                cbf_constraints.append(-h_k1 + (1-self.gamma)*h_k)
+        # 动态障碍物
         if self.moving_obstacles_on:
             for i in range(len(self.moving_obs)):
                 obs = (self.model.tvp['x_moving_obs'+str(i)], self.model.tvp['y_moving_obs'+str(i)], self.moving_obs[i][4])
@@ -262,7 +342,7 @@ class MPC:
         h = (x[0] - x_obs)**2 + (x[1] - y_obs)**2 - (self.r + r_obs + self.safety_dist)**2
         return h
 
-    def set_tvp_for_mpc(self, mpc):
+    def set_tvp_for_mpc(self, mpc:do_mpc.controller.MPC):
         """Sets the trajectory for trajectory tracking and/or the moving obstacles' trajectory.
 
         Inputs:
