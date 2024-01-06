@@ -161,9 +161,10 @@ class Plotter:
             if self.controller.moving_obstacles_on:
                 for i in range(len(self.controller.moving_obs)):
                     h = []
-                    for x in self.mpc.data['_x']:
-                        obs = (self.mpc.data['_tvp', 'x_moving_obs'+str(i)][i], self.mpc.data['_tvp', 'y_moving_obs'+str(i)][i], self.controller.moving_obs[i][4])
-                        h.append(self.controller.h(x, obs))
+                    # for x in self.mpc.data['_x']:
+                    for j in range(len(self.mpc.data['_x'])):
+                        obs = (self.mpc.data['_tvp', 'x_moving_obs'+str(i)][j], self.mpc.data['_tvp', 'y_moving_obs'+str(i)][j], self.controller.moving_obs[i][4])
+                        h.append(self.controller.h(self.mpc.data['_x'][j], obs))
                     cbfs_mov.append(h)
 
             sns.set_theme()
@@ -178,7 +179,7 @@ class Plotter:
             plt.title("CBF Values")
             plt.tight_layout()
             plt.legend()
-            plt.savefig('images/cbf.png')
+            plt.savefig('images/distance.png')
             plt.show()
 
     def create_path_animation(self):
@@ -231,7 +232,7 @@ class Plotter:
         ani = FuncAnimation(fig, self.animate_path, frames=len(self.mpc.data['_x'][:, 0]), interval=config.Ts*1000, repeat=False)
         plt.show()
         # Save animation as gif
-        ani.save('images/path_animation.gif', writer=ImageMagickWriter(fps=config.sim_time/config.Ts))
+        # ani.save('images/path_animation.gif', writer=ImageMagickWriter(fps=config.sim_time/config.Ts))
 
     def animate_path(self, i):
         """Draws each frame of the animation."""
@@ -301,6 +302,7 @@ def plot_path_comparisons(results, gammas):
             ax.add_patch(plt.Circle((x_obs, y_obs), r_obs + config.r, color='k'))
 
     # Only show unique legends
+    # 这个代码段的目的是重新排列图例的顺序并设置其位置。通常情况下，它用于在图例中按照自定义的顺序显示标签，而不是按照它们最初添加到图形中的顺序。 
     handles, labels = plt.gca().get_legend_handles_labels()
     by_label = dict(zip(labels, handles))
     plt.legend(by_label.values(), by_label.keys(), loc="upper left")

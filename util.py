@@ -7,11 +7,14 @@ from plotter import plot_path_comparisons, plot_cost_comparisons, plot_min_dista
 
 def save_mpc_results(controller):
     """Save results in pickle file."""
-    if config.controller == "MPC-CBF":
-        filename = config.controller + '_' + config.control_type + '_gamma' + str(config.gamma)
-    else:
+    if config.controller == "MPC-DC":
         filename = config.controller + '_' + config.control_type
-
+    else:
+        filename = config.controller + '_' + config.control_type + '_gamma' + str(config.gamma)
+    """
+        默认保存的位置是./result/ 表示文件同级的意思
+        save_result()设置覆盖开关，对要保存的重名的pkl文件加上前缀
+    """
     save_results([controller.mpc, controller.simulator], result_name=filename)
 
 
@@ -71,6 +74,11 @@ def compare_controller_results(N, gamma):
     print("Average min distance over all experiments: cbf={}, dc={}".format(sum(min_distances_cbf)/len(min_distances_cbf),
                                                                             sum(min_distances_dc)/len(min_distances_dc)))
 
+def run_sim():
+    """Runs a simulation and saves the results."""
+    controller = MPC()            # Define controller
+    controller.run_simulation()   # Run closed-loop control simulation
+    save_mpc_results(controller)  # Store results
 
 def run_multiple_experiments(N):
     """Runs N experiments for each method."""
@@ -81,14 +89,6 @@ def run_multiple_experiments(N):
         config.controller = c
         for i in range(N):
             run_sim()
-
-
-def run_sim():
-    """Runs a simulation and saves the results."""
-    controller = MPC()            # Define controller
-    controller.run_simulation()   # Run closed-loop control simulation
-    save_mpc_results(controller)  # Store results
-
 
 def run_sim_for_different_gammas(gammas):
     """Runs simulation for the MPC-DC and for each gamma for the MPC-CBF."""

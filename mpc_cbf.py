@@ -28,10 +28,13 @@ class MPC:
         self.Q = config.Q                        # State cost matrix
         self.static_obstacles_on = config.static_obstacles_on  # Whether to have static obstacles
         self.moving_obstacles_on = config.moving_obstacles_on  # Whether to have moving obstacles
+        self.obs_num = 0
         if self.static_obstacles_on:
             self.obs = config.obs                # Static Obstacles
+            self.obs_num = len(self.obs)
         if self.moving_obstacles_on:             # Moving obstacles
             self.moving_obs = config.moving_obs
+            self.obs_num = len(self.moving_obs)
         self.r = config.r                        # Robot radius
         self.control_type = config.control_type  # "setpoint" or "traj_tracking"
         if self.control_type == "setpoint":      # Go-to-goal
@@ -64,6 +67,10 @@ class MPC:
         # Inputs
         n_controls = 2
         _u = model.set_variable(var_type='_u', var_name='u', shape=(n_controls, 1))
+
+        # Uncertain Parameter
+        if self.controller == "MPC-ACBF":
+            model.set_variable(var_type='_p', var_name='tau', shape=(self.obs_num, 1))
 
         # State Space matrices
         A = np.zeros([5,5])
@@ -110,9 +117,7 @@ class MPC:
         B[1, 1] = a*cos(x[2])*self.Ts
         B[2, 1] = self.Ts
         B[3, 0] = cos(x[2])
-        B[3, 1] = -a*sin(x[2])
         B[4, 0] = sin(x[2])
-        B[4, 1] = a*cos(x[2])
         return B
 
     def get_cost_expression(self, model):
@@ -155,7 +160,6 @@ class MPC:
         """
 
         mpc = do_mpc.controller.MPC(self.model)
-
         # Set parameters
         setup_mpc = {'n_robust': 0,  # Robust horizon
                      'n_horizon': self.T_horizon,
@@ -177,7 +181,13 @@ class MPC:
         mpc.bounds['lower', '_u', 'u'] = -max_u
         mpc.bounds['upper', '_u', 'u'] = max_u
 
+        # Set uncertaint parameter
+        if self.controller == "MPC-ACBF":
+            p_template = {'tau':np.zeros((self.obs_num, 1))}
+            mpc.set_uncertainty_values(**p_template)
+
         # If trajectory tracking or moving obstacles: Define time-varying parameters
+        # 调用mpc.set_tvp_fun()函数-时变变量
         if self.control_type == "traj_tracking" or self.moving_obstacles_on is True:
             mpc = self.set_tvp_for_mpc(mpc)
 
@@ -329,6 +339,7 @@ class MPC:
         # 静态障碍物
         if self.static_obstacles_on:
             for obs in self.obs:
+                _tau = self.model.p['tau']
                 h_k1 = self.h(x_k1, obs)
                 h_k = self.h(self.model.x['x'], obs)
                 cbf_constraints.append(-h_k1 + (1-self.gamma)*h_k)
@@ -358,7 +369,7 @@ class MPC:
         """
         x_obs, y_obs, r_obs = obstacle
         # h = (x[0] - x_obs)**2 + (x[1] - y_obs)**2 - (self.r + r_obs + self.safety_dist)**2
-        h = sqrt((x[0] - x_obs)**2 + (x[1] - y_obs)**2) - (self.r + r_obs + self.safety_dist)
+        h = sqrt((x_obs-x[0])**2 + (y_obs - x[1])**2) - (self.r + r_obs + self.safety_dist)
         return h
 
     def set_tvp_for_mpc(self, mpc:do_mpc.controller.MPC):
@@ -411,13 +422,20 @@ class MPC:
         simulator = do_mpc.simulator.Simulator(self.model)
         simulator.set_param(t_step=self.Ts)
 
-        # If trajectory tracking or moving obstacles: Add time-varying parameters
+        # If trajectory tracking or moving obstacles: Add time-varying parameters——时变参数
         if self.control_type == "traj_tracking" or self.moving_obstacles_on is True:
             tvp_template = simulator.get_tvp_template()
 
             def tvp_fun(t_now):
                 return tvp_template
             simulator.set_tvp_fun(tvp_fun)
+
+        # 为simulator设置动态tau值——参数
+        if self.controller == "MPC-ACBF":
+            p_template = simulator.get_p_template()
+            def p_fun(t_now):
+                return p_template
+            simulator.set_p_fun(p_fun)
 
         simulator.setup()
 
@@ -430,11 +448,77 @@ class MPC:
         self.estimator.x0 = self.x0
         self.mpc.set_initial_guess()
 
+    # 启动仿真主循环
     def run_simulation(self):
         """Runs a closed-loop control simulation."""
         x0 = self.x0
-        for k in range(self.sim_time):
+        k = 0
+        while (np.linalg.norm(x0.reshape(5,)[:3]-np.array(self.goal).reshape(5,)[:3])>1e-1) & (k < self.sim_time):
+            # 更新系统参数
+            print(k)
+            if (self.controller == "MPC-ACBF"):
+                obs_list = []
+                if self.static_obstacles_on:
+                    for i in range(self.obs_num):
+                        obs_list.append(np.array([0.0, 
+                                                  self.obs[i][0], 
+                                                  0.0, 
+                                                  self.obs[i][1], 
+                                                  self.obs[2]]))
+                elif self.moving_obstacles_on:
+                    for i in range(self.obs_num):
+                        if k == 0:
+                            obs_list.append(np.array(self.moving_obs[i]))
+                        elif k == 1:
+                            obs_list.append(np.array([self.moving_obs[i][0],
+                                                      self.moving_obs[i][1]+self.Ts*self.moving_obs[i][0],
+                                                      self.moving_obs[i][2],
+                                                      self.moving_obs[i][3]+self.Ts*self.moving_obs[i][2],
+                                                      self.moving_obs[i][4]]))
+                        else:
+                            obs_k   = np.array([self.mpc.data['_tvp', 'dx_moving_obs'+str(i)][-2].sum(),
+                                                self.mpc.data['_tvp', 'x_moving_obs'+str(i)][-2].sum(),
+                                                self.mpc.data['_tvp', 'dy_moving_obs'+str(i)][-2].sum(),
+                                                self.mpc.data['_tvp', 'y_moving_obs'+str(i)][-2].sum(),
+                                                self.moving_obs[i][4]])
+                            obs_k1  = np.array([self.mpc.data['_tvp', 'dx_moving_obs'+str(i)][-1].sum(),
+                                                self.mpc.data['_tvp', 'x_moving_obs'+str(i)][-1].sum(),
+                                                self.mpc.data['_tvp', 'dy_moving_obs'+str(i)][-1].sum(),
+                                                self.mpc.data['_tvp', 'y_moving_obs'+str(i)][-1].sum(),
+                                                self.moving_obs[i][4]]) 
+                            obs_list.append(2*obs_k1-obs_k)
+
+                p_template = self.updata_parameter_for_mpc(_k=k, _ro_state=np.array([i.sum() for i in x0]), _obs_state=obs_list)
+                self.mpc.set_uncertainty_values(**p_template)
+            # 输入当前状态量，求解最优控制量，只有执行以下步骤才会将mpc.data数据才会更新
             u0 = self.mpc.make_step(x0)
             y_next = self.simulator.make_step(u0)
             # y_next = self.simulator.make_step(u0, w0=10**(-4)*np.random.randn(3, 1))  # Optional Additive process noise
-            x0 = self.estimator.make_step(y_next)
+            x0 = self.estimator.make_step(y_next) 
+            k = k+1
+        # {'_time': 1, '_x': 5, '_y': 5, '_u': 2, '_z': 0, '_tvp': 0, '_p': 3, '_aux': 2
+        # print(self.mpc.data.data_fields)
+        print('mpc controller is: ', self.controller)
+
+    def updata_parameter_for_mpc(self, _k:int, _ro_state:np.ndarray, _obs_state:list) -> dict: 
+        tau_c = np.zeros((self.obs_num,1))
+        tau_list = []
+        ro_p = _ro_state[:2]
+        ro_v = _ro_state[3:]
+        print('robot velocity: ',ro_v)
+        for i in range(len(_obs_state)):
+            obs_p   = _obs_state[i][1:4:2]
+            obs_v   = _obs_state[i][0:4:2]
+            p_r = obs_p-ro_p
+            v_r = obs_v-ro_v
+            print('obs',i)
+            print('p_r: ',p_r)
+            print('v_r: ',v_r)
+            # 障碍物的风险判断，当且危险的障碍物会使用tau值，否则为0
+            if (np.dot(p_r, v_r) < 0.0) & (np.linalg.norm(p_r)<5.0) & (abs(np.linalg.norm(p_r)**2/np.dot(p_r, v_r))<3):
+                tau_max = -np.dot(p_r, v_r)/(np.linalg.norm(v_r))**2
+                tau_list.append(tau_max)
+            else:
+                tau_list.append(0.0)
+        print(tau_list)
+        return {'tau':tau_c}
