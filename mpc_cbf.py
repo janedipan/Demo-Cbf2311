@@ -70,7 +70,10 @@ class MPC:
 
         # Uncertain Parameter
         if self.controller == "MPC-ACBF":
-            model.set_variable(var_type='_p', var_name='tau', shape=(self.obs_num, 1))
+            if self.obs_num == 2:
+                model.set_variable(var_type='_p', var_name='tau0')
+                model.set_variable(var_type='_p', var_name='tau1')
+
 
         # State Space matrices
         A = np.zeros([5,5])
@@ -95,6 +98,7 @@ class MPC:
                 model.set_variable('_tvp', 'y_moving_obs'+str(i))
                 model.set_variable('_tvp', 'dx_moving_obs'+str(i))
                 model.set_variable('_tvp', 'dy_moving_obs'+str(i))
+                model.set_variable('_tvp', 'act_moving_obs'+str(i))
 
         # Setup model
         model.setup()
@@ -183,8 +187,9 @@ class MPC:
 
         # Set uncertaint parameter
         if self.controller == "MPC-ACBF":
-            p_template = {'tau':np.zeros((self.obs_num, 1))}
-            mpc.set_uncertainty_values(**p_template)
+            if self.obs_num == 2:
+                mpc.set_uncertainty_values(tau0=np.zeros(1))
+                mpc.set_uncertainty_values(tau1=np.zeros(1))
 
         # If trajectory tracking or moving obstacles: Define time-varying parameters
         # 调用mpc.set_tvp_fun()函数-时变变量
@@ -215,20 +220,32 @@ class MPC:
         Returns:
           - mpc(do_mpc.controller.MPC): The mpc controller with obstacle constraints added
         """
+        
+
         if self.static_obstacles_on:
             i = 0
             for x_obs, y_obs, r_obs in self.obs:
+                # 检测距离限制
+                distance_p = sqrt((self.model.x['x'][0] - x_obs)**2 + 
+                                  (self.model.x['x'][1] - y_obs)**2)
+                                
                 obs_avoid = - (self.model.x['x'][0] - x_obs)**2 \
                             - (self.model.x['x'][1] - y_obs)**2 \
                             + (self.r + r_obs + self.safety_dist)**2
+                obs_avoid = if_else(distance_p<=SX(config.detection_range), obs_avoid, SX(0.0))
                 mpc.set_nl_cons('obstacle_constraint'+str(i), obs_avoid, ub=0)
                 i += 1
 
         if self.moving_obstacles_on:
             for i in range(len(self.moving_obs)):
+                # 检测距离限制
+                distance_p = sqrt((self.model.x['x'][0] - self.model.tvp['x_moving_obs'+str(i)])**2 + 
+                                    (self.model.x['x'][1] - self.model.tvp['y_moving_obs'+str(i)])**2)
+
                 obs_avoid = - (self.model.x['x'][0] - self.model.tvp['x_moving_obs'+str(i)])**2 \
                             - (self.model.x['x'][1] - self.model.tvp['y_moving_obs'+str(i)])**2 \
                             + (self.r + self.moving_obs[i][4] + self.safety_dist)**2
+                obs_avoid = if_else(distance_p<=SX(config.detection_range), obs_avoid, SX(0.0))
                 mpc.set_nl_cons('moving_obstacle_constraint'+str(i), obs_avoid, ub=0)
 
         return mpc
@@ -261,6 +278,7 @@ class MPC:
         i = 0
         for cbc in cbf_constraints:
             mpc.set_nl_cons('cbf_constraint'+str(i), cbc, ub=0)
+            # mpc.set_nl_cons('cbf_constraint'+str(i), cbc, ub=0, soft_constraint=True, penalty_term_cons=1500, maximum_violation=0.1)
             i += 1
         return mpc
 
@@ -282,16 +300,28 @@ class MPC:
         # 静态障碍物
         if self.static_obstacles_on:
             for obs in self.obs:
+                # 检测距离限制
+                distance_p = sqrt((self.model.x['x'][0] - self.obs[0])**2 + 
+                                  (self.model.x['x'][1] - self.obs[1])**2)
+                
                 h_k1 = self.h(x_k1, obs)
                 h_k = self.h(self.model.x['x'], obs)
-                cbf_constraints.append(-h_k1 + (1-self.gamma)*h_k)
+                st_cbf = -h_k1 + (1-self.gamma)*h_k
+                st_cbf = if_else(distance_p<=SX(config.detection_range), st_cbf, 0.0)
+                cbf_constraints.append(st_cbf)
         # 动态障碍物
         if self.moving_obstacles_on:
             for i in range(len(self.moving_obs)):
+                # 检测距离限制
+                distance_p = sqrt((self.model.x['x'][0] - self.model.tvp['x_moving_obs'+str(i)])**2 + 
+                    (self.model.x['x'][1] - self.model.tvp['y_moving_obs'+str(i)])**2)
+
                 obs = (self.model.tvp['x_moving_obs'+str(i)], self.model.tvp['y_moving_obs'+str(i)], self.moving_obs[i][4])
                 h_k1 = self.h(x_k1, obs)
                 h_k = self.h(self.model.x['x'], obs)
-                cbf_constraints.append(-h_k1 + (1-self.gamma)*h_k)
+                st_cbf = -h_k1 + (1-self.gamma)*h_k
+                st_cbf = if_else(distance_p<=SX(config.detection_range), st_cbf, 0.0)
+                cbf_constraints.append(st_cbf)
 
         return cbf_constraints
 
@@ -308,21 +338,33 @@ class MPC:
         # 静态障碍物
         if self.static_obstacles_on:
             for obs in self.obs:
+                # 检测距离限制
+                distance_p = sqrt((self.model.x['x'][0] - self.obs[0])**2 + 
+                                  (self.model.x['x'][1] - self.obs[1])**2)
+                
                 h_k1 = self.h(x_k1, obs)
                 h_k = self.h(self.model.x['x'], obs)
-                cbf_constraints.append(-h_k1 + (1-self.gamma)*h_k)
+                st_cbf = -h_k1 + (1-self.gamma)*h_k
+                st_cbf = if_else(distance_p<=SX(config.detection_range), st_cbf, 0.0)
+                cbf_constraints.append(st_cbf)
         # 动态障碍物
         if self.moving_obstacles_on:
             for i in range(len(self.moving_obs)):
+                # 检测距离限制
+                distance_p = sqrt((self.model.x['x'][0] - self.model.tvp['x_moving_obs'+str(i)])**2 + 
+                    (self.model.x['x'][1] - self.model.tvp['y_moving_obs'+str(i)])**2)
                 obs = (self.model.tvp['x_moving_obs'+str(i)], 
                        self.model.tvp['y_moving_obs'+str(i)], 
                        self.moving_obs[i][4])
-                obs1 = (self.model.tvp['x_moving_obs'+str(i)] + self.model.tvp['dx_moving_obs'+str(i)]*self.Ts,
-                        self.model.tvp['y_moving_obs'+str(i)] + self.model.tvp['dy_moving_obs'+str(i)]*self.Ts,
+
+                obs1 = (self.model.tvp['x_moving_obs'+str(i)] + self.model.tvp['dx_moving_obs'+str(i)]*self.Ts*self.model.tvp['act_moving_obs'+str(i)],
+                        self.model.tvp['y_moving_obs'+str(i)] + self.model.tvp['dy_moving_obs'+str(i)]*self.Ts*self.model.tvp['act_moving_obs'+str(i)],
                         self.moving_obs[i][4])
                 h_k1 = self.h(x_k1, obs1)
                 h_k = self.h(self.model.x['x'], obs)
-                cbf_constraints.append(-h_k1 + (1-self.gamma)*h_k)
+                st_cbf = -h_k1 + (1-self.gamma)*h_k
+                st_cbf = if_else(distance_p<=SX(config.detection_range), st_cbf, 0.0)
+                cbf_constraints.append(st_cbf)
 
         return cbf_constraints
 
@@ -339,24 +381,43 @@ class MPC:
         # 静态障碍物
         if self.static_obstacles_on:
             for obs in self.obs:
-                _tau = self.model.p['tau']
+                # 检测距离限制
+                distance_p = sqrt((self.model.x['x'][0] - self.obs[0])**2 + 
+                                  (self.model.x['x'][1] - self.obs[1])**2)
+                
                 h_k1 = self.h(x_k1, obs)
                 h_k = self.h(self.model.x['x'], obs)
-                cbf_constraints.append(-h_k1 + (1-self.gamma)*h_k)
+                st_cbf = -h_k1 + (1-self.gamma)*h_k
+                st_cbf = if_else(distance_p<=SX(config.detection_range), st_cbf, 0.0)
+                cbf_constraints.append(st_cbf)
         # 动态障碍物
         if self.moving_obstacles_on:
             for i in range(len(self.moving_obs)):
+                # 检测距离限制
+                _tau = self.model.p['tau'+str(i)]
+                distance_p = sqrt((self.model.x['x'][0] - self.model.tvp['x_moving_obs'+str(i)])**2 + 
+                    (self.model.x['x'][1] - self.model.tvp['y_moving_obs'+str(i)])**2)
                 obs = (self.model.tvp['x_moving_obs'+str(i)], 
                        self.model.tvp['y_moving_obs'+str(i)], 
                        self.moving_obs[i][4])
-                obs1 = (self.model.tvp['x_moving_obs'+str(i)] + self.model.tvp['dx_moving_obs'+str(i)]*self.Ts,
-                        self.model.tvp['y_moving_obs'+str(i)] + self.model.tvp['dy_moving_obs'+str(i)]*self.Ts,
+
+                obs1 = (self.model.tvp['x_moving_obs'+str(i)] + self.model.tvp['dx_moving_obs'+str(i)]*self.Ts*self.model.tvp['act_moving_obs'+str(i)],
+                        self.model.tvp['y_moving_obs'+str(i)] + self.model.tvp['dy_moving_obs'+str(i)]*self.Ts*self.model.tvp['act_moving_obs'+str(i)],
                         self.moving_obs[i][4])
-                h_k1 = self.h(x_k1, obs1)
-                h_k = self.h(self.model.x['x'], obs)
-                cbf_constraints.append(-h_k1 + (1-self.gamma)*h_k)
+                v_r = (self.model.tvp['dx_moving_obs'+str(i)]-self.model.x['x'][3], 
+                       self.model.tvp['dy_moving_obs'+str(i)]-self.model.x['x'][4])
+                h_k1 = self.h1(x_k1, obs1, v_r, _tau)
+                h_k = self.h1(self.model.x['x'], obs, v_r, _tau)
+                st_cbf = -h_k1 + (1-self.gamma)*h_k
+                st_cbf = if_else(distance_p<=SX(config.detection_range), st_cbf, 0.0)
+                cbf_constraints.append(st_cbf)
 
         return cbf_constraints
+
+    def h1(self, x, obstacle:tuple, v_r:tuple, _tau=0.0):
+        x_obs, y_obs, r_obs = obstacle
+        h = sqrt((x_obs-x[0]+v_r[0]*_tau)**2 + (y_obs - x[1]+v_r[1]*_tau)**2) - (self.r + r_obs + self.safety_dist)
+        return h
 
     def h(self, x, obstacle:tuple):
         """Computes the Control Barrier Function.
@@ -368,7 +429,6 @@ class MPC:
           - h(casadi.casadi.SX): The Control Barrier Function
         """
         x_obs, y_obs, r_obs = obstacle
-        # h = (x[0] - x_obs)**2 + (x[1] - y_obs)**2 - (self.r + r_obs + self.safety_dist)**2
         h = sqrt((x_obs-x[0])**2 + (y_obs - x[1])**2) - (self.r + r_obs + self.safety_dist)
         return h
 
@@ -404,12 +464,29 @@ class MPC:
             if self.moving_obstacles_on is True:
                 # Moving obstacles trajectory
                 for i in range(len(self.moving_obs)):
-                    tvp_struct_mpc['_tvp', :, 'x_moving_obs'+str(i)] = self.moving_obs[i][0]*t_now + self.moving_obs[i][1]
-                    tvp_struct_mpc['_tvp', :, 'y_moving_obs'+str(i)] = self.moving_obs[i][2]*t_now + self.moving_obs[i][3]
-                    tvp_struct_mpc['_tvp', :, 'dx_moving_obs'+str(i)] = self.moving_obs[i][0]
-                    tvp_struct_mpc['_tvp', :, 'dy_moving_obs'+str(i)] = self.moving_obs[i][2]
+                    # 分配障碍物开始&结束运动的时间
+                    if i == 0:
+                        t_min = 0.0
+                        t_max = 3.0
+                    elif i == 1:
+                        t_min = 2.5
+                        t_max = 8.0
+                    
+                    # 动态障碍物分段处理: 等待，结束，运行
+                    if t_now < t_min:
+                        dt = 0.0
+                        tvp_struct_mpc['_tvp', :, 'act_moving_obs'+str(i)] = 0
+                    elif t_now > t_max:
+                        dt = t_max-t_min
+                        tvp_struct_mpc['_tvp', :, 'act_moving_obs'+str(i)] = 0
+                    else:
+                        dt = t_now-t_min
+                        tvp_struct_mpc['_tvp', :, 'act_moving_obs'+str(i)] = 1
+                    tvp_struct_mpc['_tvp', :, 'x_moving_obs'+str(i)] = self.moving_obs[i][0]*dt + self.moving_obs[i][1]
+                    tvp_struct_mpc['_tvp', :, 'y_moving_obs'+str(i)] = self.moving_obs[i][2]*dt + self.moving_obs[i][3]
+                    tvp_struct_mpc['_tvp', :, 'dx_moving_obs'+str(i)] = 0.0 if dt!=t_now-t_min else self.moving_obs[i][0]
+                    tvp_struct_mpc['_tvp', :, 'dy_moving_obs'+str(i)] = 0.0 if dt!=t_now-t_min else self.moving_obs[i][2]
             return tvp_struct_mpc
-
         mpc.set_tvp_fun(tvp_fun_mpc)
         return mpc
 
@@ -453,7 +530,8 @@ class MPC:
         """Runs a closed-loop control simulation."""
         x0 = self.x0
         k = 0
-        while (np.linalg.norm(x0.reshape(5,)[:3]-np.array(self.goal).reshape(5,)[:3])>1e-1) & (k < self.sim_time):
+        scale_s = []
+        while (np.linalg.norm(x0.reshape(5,)[:3]-np.array(self.goal).reshape(5,)[:3])>5e-2) & (k < self.sim_time):
             # 更新系统参数
             print(k)
             if (self.controller == "MPC-ACBF"):
@@ -468,28 +546,28 @@ class MPC:
                 elif self.moving_obstacles_on:
                     for i in range(self.obs_num):
                         if k == 0:
-                            obs_list.append(np.array(self.moving_obs[i]))
-                        elif k == 1:
-                            obs_list.append(np.array([self.moving_obs[i][0],
-                                                      self.moving_obs[i][1]+self.Ts*self.moving_obs[i][0],
-                                                      self.moving_obs[i][2],
-                                                      self.moving_obs[i][3]+self.Ts*self.moving_obs[i][2],
-                                                      self.moving_obs[i][4]]))
+                            obs_k1 = np.array(self.moving_obs[i])
+                            obs_k1[0] = obs_k1[2] = 0.0
+                            obs_list.append(obs_k1)
                         else:
-                            obs_k   = np.array([self.mpc.data['_tvp', 'dx_moving_obs'+str(i)][-2].sum(),
-                                                self.mpc.data['_tvp', 'x_moving_obs'+str(i)][-2].sum(),
-                                                self.mpc.data['_tvp', 'dy_moving_obs'+str(i)][-2].sum(),
-                                                self.mpc.data['_tvp', 'y_moving_obs'+str(i)][-2].sum(),
-                                                self.moving_obs[i][4]])
-                            obs_k1  = np.array([self.mpc.data['_tvp', 'dx_moving_obs'+str(i)][-1].sum(),
+                            sign_act = self.mpc.data['_tvp', 'act_moving_obs'+str(i)][-1]
+                            obs_k   = np.array([self.mpc.data['_tvp', 'dx_moving_obs'+str(i)][-1].sum(),
                                                 self.mpc.data['_tvp', 'x_moving_obs'+str(i)][-1].sum(),
                                                 self.mpc.data['_tvp', 'dy_moving_obs'+str(i)][-1].sum(),
                                                 self.mpc.data['_tvp', 'y_moving_obs'+str(i)][-1].sum(),
-                                                self.moving_obs[i][4]]) 
-                            obs_list.append(2*obs_k1-obs_k)
+                                                self.moving_obs[i][4]])
+                            if sign_act == 0:
+                                obs_k1 = obs_k
+                            else:
+                                obs_k1 = obs_k
+                                obs_k1[1] = obs_k[1] + obs_k[0]*self.Ts
+                                obs_k1[3] = obs_k[3] + obs_k[2]*self.Ts
+                            obs_list.append(obs_k1)
 
-                p_template = self.updata_parameter_for_mpc(_k=k, _ro_state=np.array([i.sum() for i in x0]), _obs_state=obs_list)
-                self.mpc.set_uncertainty_values(**p_template)
+                p_template = self.updata_parameter_for_mpc(scale_s, _k=k, _ro_state=np.array([i.sum() for i in x0]), _obs_state=obs_list)
+                print(p_template)
+                self.mpc.set_uncertainty_values(tau0=np.array([p_template[0]]), 
+                                                tau1=np.array([p_template[1]]))
             # 输入当前状态量，求解最优控制量，只有执行以下步骤才会将mpc.data数据才会更新
             u0 = self.mpc.make_step(x0)
             y_next = self.simulator.make_step(u0)
@@ -497,28 +575,39 @@ class MPC:
             x0 = self.estimator.make_step(y_next) 
             k = k+1
         # {'_time': 1, '_x': 5, '_y': 5, '_u': 2, '_z': 0, '_tvp': 0, '_p': 3, '_aux': 2
-        # print(self.mpc.data.data_fields)
-        print('mpc controller is: ', self.controller)
+        print('-----------------mpc controller is: {} ------------------'.format(self.controller))
+        print(self.mpc.data.data_fields)
+        print(self.mpc.data['_p'])
+        # print(scale_s)
 
-    def updata_parameter_for_mpc(self, _k:int, _ro_state:np.ndarray, _obs_state:list) -> dict: 
-        tau_c = np.zeros((self.obs_num,1))
+    def updata_parameter_for_mpc(self, list_s:list, _k:int, _ro_state:np.ndarray, _obs_state:list) -> list:
         tau_list = []
+        scale_list = []
         ro_p = _ro_state[:2]
         ro_v = _ro_state[3:]
-        print('robot velocity: ',ro_v)
-        for i in range(len(_obs_state)):
+        # print('robot velocity: ',ro_v)
+        for i in range(self.obs_num):
             obs_p   = _obs_state[i][1:4:2]
             obs_v   = _obs_state[i][0:4:2]
             p_r = obs_p-ro_p
             v_r = obs_v-ro_v
-            print('obs',i)
-            print('p_r: ',p_r)
-            print('v_r: ',v_r)
-            # 障碍物的风险判断，当且危险的障碍物会使用tau值，否则为0
-            if (np.dot(p_r, v_r) < 0.0) & (np.linalg.norm(p_r)<5.0) & (abs(np.linalg.norm(p_r)**2/np.dot(p_r, v_r))<3):
+            # print('obs',i)
+            # print('rob_v: ', ro_v)
+            # print('obs_v: ', obs_v)
+            # print('p_r: ',p_r)
+            # print('v_r: ',v_r)
+            # 障碍物的风险判断: 1.当且危险的障碍物 2.检测距离5.5米 3.碰撞时间为2s 会使用tau值，否则为0
+            if (np.dot(p_r, v_r) < 0.0) & (abs(np.linalg.norm(p_r)**2/np.dot(p_r, v_r))<2):
                 tau_max = -np.dot(p_r, v_r)/(np.linalg.norm(v_r))**2
-                tau_list.append(tau_max)
+                # scale = -np.dot(p_r, v_r)/33
+                scale = 0.5 * np.linalg.norm(obs_v)/1.5
+                # tau_list.append(tau_max*0.4)
+                # scale = 0.5
+                tau_list.append(tau_max*scale)
+                scale_list.append(scale)
             else:
                 tau_list.append(0.0)
-        print(tau_list)
-        return {'tau':tau_c}
+                scale_list.append(0.0)
+        list_s.append(scale_list)
+        print(list_s)
+        return tau_list

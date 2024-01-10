@@ -7,23 +7,24 @@ Ts = 0.1                                   # Sampling time [s]
 T_horizon = 20                             # Prediction horizon time steps
 
 gamma = 0.1                                # CBF parameter in [0,1]
-safety_dist = 0.1                            # Safety distance
+safety_dist = 0.2                            # Safety distance
+detection_range = 5
 x0 = np.array([0, 0, 0.0])                  # Initial state
 x01 = np.array([0, 0, 0.0, 0.0, 0.0])       # Initial state for personal test
 
 # Actuator limits
-v_limit = 1.4                             # Linear velocity limit
-omega_limit = 0.53                          # Angular velocity limit
+v_limit = 1.5                             # Linear velocity limit
+omega_limit = 0.8                        # Angular velocity limit
 
 # Type of control
-controller = "MPC-SCBF"                     # Options: "MPC-CBF", "MPC-DC"
+controller = "MPC-DCBF"                     # Options: "MPC-CBF", "MPC-DC"
 control_type = "setpoint"                  # Options: "setpoint", "traj_tracking"
 trajectory = "infinity"                    # Type of trajectory. Options: circular, infinity
 
 # For setpoint control:
 goal = [10, 0, 0.0]                     # Robot's goal for set point control
-goal1 = [10, 0, 0.0, 0.0, 0.0]                     # Robot's goal for set point control
-Q_sp = np.diag([15, 15, 0.005])            # State cost matrix
+goal1 = [10, 0, 0.0, 0.0, 0.0]               # Robot's goal for set point control
+Q_sp = np.diag([200, 200, 0.05])            # State cost matrix [15, 15, 0.005]
 R_sp = np.array([2, 0.2])                  # Controls cost matrix
 
 # For trajectory tracking control:
@@ -33,11 +34,11 @@ R_tr = np.array([0.1, 0.001])              # Controls cost matrix
 # Obstacles
 static_obstacles_on = True                 # Whether to have obstacles or not
 moving_obstacles_on = False                # Whether to have moving obstacles or not
-r = 0.4                                    # Robot radius (for obstacle avoidance)
+r = 0.3                                    # Robot radius (for obstacle avoidance)
 
 
 # --------------------------------------setting up-----------------------------------------
-scenario = 7                               # Options: 1-6 or None, others for personal test
+scenario = 8                               # Options: 1-6 or None, others for personal test
 
 
 # ------------------------------------------------------------------------------
@@ -89,18 +90,25 @@ elif scenario == 8:
     static_obstacles_on = False
     moving_obstacles_on = True
     sim_time = 150
-    gamma = 0.25  
-  
+    gamma = 0.30
+    safety_dist = 0.2 
+    r = 0.2
+    x0 = np.array([0, 0, 0.0])                  # Initial state
+    x01 = np.array([0, 0, 0.0, 0.0, 0.0]) 
+    goal = [6.5, 0, 0.0] 
+    goal1 = [6.5, 0, 0.0, 0.0, 0.0]
 
-# Define moving obstacles as list of tuples (ax,bx,ay,by,radius)
-# where each obstacle follows a linear trajectory x=ax*t+bx, y=ay*t+by
-moving_obs = [(0.2, 0, 0, 0.6, 0.1),
-              (-0.15, 1.1, 0, 0.4, 0.05),
-              (0.2, -0.5, 0, 0.8, 0.1),
-              (0, 1.0, 0.14, -0.8, 0.1),
-              (0, 1.8, -0.09, 1.0, 0.1)]
-# moving_obs = [(0.0, 4.0, 0.7, -0.5, 0.5),
-#                (-0.5, 12.5, 0.0, -1.1, 0.5)] 
+'''
+Define moving obstacles as list of tuples (ax,bx,ay,by,radius)
+where each obstacle follows a linear trajectory x=ax*t+bx, y=ay*t+by
+'''  
+# scenario2 for janedipan
+
+
+# scenario3 for janedipan
+# (-0.0, 5.0, 0.0, 0.80, 0.25)
+moving_obs = [(-1.5, 5.0, 0.0, -0.35, 0.25),
+              (-1.2, 6.5, 0.0, 1.0, 0.25)] 
 
 # ------------------------------------------------------------------------------
 if control_type == "setpoint":

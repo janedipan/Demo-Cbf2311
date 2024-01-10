@@ -310,6 +310,52 @@ def plot_path_comparisons(results, gammas):
     plt.savefig('images/path_comparisons.png')
     plt.show()
 
+def plot_path_comparisons_by4controller(controllers:list,results:list, gamma:float):
+    sns.set_theme()
+    fig, ax = plt.subplots(figsize=(9, 5))
+    ax.set_xlabel('x/m')
+    ax.set_ylabel('y/m')
+    plt.title("Robot path (scenario 3) ")
+    plt.tight_layout()
+    ax.axis('equal')    
+
+    # 使用plot绘制折线图
+    colors = ['#04364A','#1AACAC','#E9B824','#EF4040']
+    X_dc = results[0]['mpc']['_x']
+    ax.plot(X_dc[:, 0], X_dc[:, 1], color=colors[0], linestyle='--', label="MPC-DC")
+
+    for i in range(len(results)-1):
+        X = results[i+1]['mpc']['_x']    
+        label = "MPC-{} (gamma={})".format(controllers[i], gamma)
+        ax.plot(X[:, 0], X[:, 1], color=colors[i+1],label=label)
+    
+    # Plot initial position
+    x0 = X_dc[0, :2]
+    ax.plot(x0[0], x0[1], 'b.', markersize=16, label="Initial position")
+
+    # Plot goal
+    # ax.plot(config.goal[0], config.goal[1], color='#E57C23', marker='*', linestyle=':', markersize=15, label="Goal")
+    ax.plot(config.goal[0], config.goal[1], 'g*', markersize=16, label="Goal")
+
+    # 显示障碍物
+    # Plot moving obstacle trajectory
+    if config.moving_obstacles_on is True:
+        for i in range(len(config.moving_obs)):
+            # Plot final position
+            ax.add_patch(plt.Circle((results[-2]['mpc']['_tvp', 'x_moving_obs'+str(i)][-1],
+                                        results[-2]['mpc']['_tvp', 'y_moving_obs'+str(i)][-1]),
+                                    config.moving_obs[i][4], color='k'))
+            # Plot path
+            ax.plot(results[-2]['mpc']['_tvp', 'x_moving_obs'+str(i)], results[-2]['mpc']['_tvp', 'y_moving_obs'+str(i)],
+                    'k:', label="Moving Obstacle path", alpha=0.3)
+
+    # Only show unique legends
+    handles, labels = plt.gca().get_legend_handles_labels()
+    by_label = dict(zip(labels, handles))
+    plt.legend(by_label.values(), by_label.keys(), loc="upper left")
+
+    plt.savefig('images/path_comparisons.png')
+    plt.show()
 
 def plot_cost_comparisons(costs_dc, costs_cbf, gamma):
     """Plots the objective function cost for each method for all experiments."""

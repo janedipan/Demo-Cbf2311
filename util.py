@@ -2,7 +2,7 @@ from do_mpc.data import save_results, load_results
 
 import config
 from mpc_cbf import MPC
-from plotter import plot_path_comparisons, plot_cost_comparisons, plot_min_distance_comparison
+from plotter import plot_path_comparisons, plot_cost_comparisons, plot_min_distance_comparison, plot_path_comparisons_by4controller
 
 
 def save_mpc_results(controller):
@@ -104,6 +104,26 @@ def run_sim_for_different_gammas(gammas):
         run_sim()
 
 
+def run_sim_for_four_controller(scenario=8, gamma=0.3, safety_dist=0.2):
+    """
+        Runs simulation for the MPC-DC, MPC-SCBF, MPC-DCBF, MPC-ACBF.
+    """
+    config.scenario = scenario
+    config.gamma = gamma
+    config.safety_dist = safety_dist
+
+    config.controller = "MPC-DC"
+    run_sim()
+
+    config.controller = "MPC-SCBF"
+    run_sim()
+
+    config.controller = "MPC-DCBF"
+    run_sim()    
+
+    config.controller = "MPC-ACBF"
+    run_sim()
+
 def compare_results_by_gamma():
     """Runs simulations and plots path for each method and different gamma values."""
 
@@ -120,3 +140,15 @@ def compare_results_by_gamma():
 
     # Plot path comparison
     plot_path_comparisons(results, gammas)
+
+def compare_results_by_four_controller():
+    controllers = ["SCBF", "DCBF", "ACBF"]
+    ga = 0.3
+    # run_sim_for_four_controller(gamma=ga)
+
+    results = [load_mpc_results("MPC-DC_setpoint")]
+    for x in controllers:
+        filename_cbf = "MPC-{}_setpoint_gamma".format(x)+str(ga)
+        results.append(load_mpc_results(filename_cbf))
+    
+    plot_path_comparisons_by4controller(controllers, results, ga)
