@@ -17,7 +17,7 @@ v_limit = 1.5                             # Linear velocity limit
 omega_limit = 0.8                        # Angular velocity limit
 
 # Type of control
-controller = "MPC-DCBF"                     # Options: "MPC-CBF", "MPC-DC"
+controller = "MPC-DC"                     # Options: "MPC-CBF", "MPC-DC"
 control_type = "setpoint"                  # Options: "setpoint", "traj_tracking"
 trajectory = "infinity"                    # Type of trajectory. Options: circular, infinity
 
@@ -102,13 +102,18 @@ elif scenario == 8:
 Define moving obstacles as list of tuples (ax,bx,ay,by,radius)
 where each obstacle follows a linear trajectory x=ax*t+bx, y=ay*t+by
 '''  
-# scenario2 for janedipan
+# scenario1 for janedipan
+moving_obs = [(-0.5, 4.0, 0.0, -0.35, 0.25),
+              (-0.5, 5.55, 0.0, 0.90, 0.25)] 
 
+# scenario2 for janedipan
+# moving_obs = [(-1.0, 4.5, 0.0, -0.35, 0.25),
+#               (-1.0, 5.5, 0.0, 1.0, 0.25)] 
 
 # scenario3 for janedipan
 # (-0.0, 5.0, 0.0, 0.80, 0.25)
-moving_obs = [(-1.5, 5.0, 0.0, -0.35, 0.25),
-              (-1.2, 6.5, 0.0, 1.0, 0.25)] 
+# moving_obs = [(-1.5, 5.0, 0.0, -0.35, 0.25),
+#               (-1.2, 6.5, 0.0, 1.0, 0.25)] 
 
 # ------------------------------------------------------------------------------
 if control_type == "setpoint":

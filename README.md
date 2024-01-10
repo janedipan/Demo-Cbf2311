@@ -55,11 +55,25 @@ Path comparison for different values of γ for MPC-CBF and with MPC-DC
     <br>Path comparison
 </p>
 
+### Scenario1
+动态障碍物最大速度为0.5m/s的情况
+<p align="center" width="100%">
+    <img src="images/janedipan_backup/path_comparisons1.png" width="500">
+    <br>Path comparison1: moving_obs = [(-0.5, 4.0, 0.0, -0.35, 0.25),(-0.5, 5.55, 0.0, 0.90, 0.25)] (0～6.0s 0.0~6.0s)
+</p>
+
+### Scenario2
+动态障碍物最大速度为1.0m/s的情况
+<p align="center" width="100%">
+    <img src="images/janedipan_backup/path_comparisons2.png" width="500">
+    <br>Path comparison2: moving_obs = [(-1.0, 4.5, 0.0, -0.35, 0.25),(-1.0, 5.5, 0.0, 1.0, 0.25)] (0～4.0s 3.0~8.0s)
+</p>
+
 ### Scenario3
 动态障碍物最大速度为1.5m/s的情况
 <p align="center" width="100%">
     <img src="images/janedipan_backup/path_comparisons3.png" width="500">
-    <br>Path comparison3: 最大循环周期15s，时间步长0.1s，MPC预测步数20，安全距离0.2m，机器人半径0.2m，gamma=0.3，机器人最大速度1.5，最大角速度0.8; scale = 0.5 * np.linalg.norm(obs_v)/1.5
+    <br>Path comparison3: moving_obs = [(-1.5, 5.0, 0.0, -0.35, 0.25),(-1.2, 6.5, 0.0, 1.0, 0.25)] (0～3.0s 2.5~8.0s)
 </p>
 
 

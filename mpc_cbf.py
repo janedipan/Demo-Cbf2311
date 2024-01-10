@@ -466,11 +466,11 @@ class MPC:
                 for i in range(len(self.moving_obs)):
                     # 分配障碍物开始&结束运动的时间
                     if i == 0:
-                        t_min = 0.0
-                        t_max = 3.0
+                        t_min = 0.0         # 0.0
+                        t_max = 6.0         # 3.0
                     elif i == 1:
-                        t_min = 2.5
-                        t_max = 8.0
+                        t_min = 0.0         # 2.5
+                        t_max = 6.0         # 8.0
                     
                     # 动态障碍物分段处理: 等待，结束，运行
                     if t_now < t_min:
