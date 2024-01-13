@@ -29,6 +29,7 @@ class MPC:
         self.static_obstacles_on = config.static_obstacles_on  # Whether to have static obstacles
         self.moving_obstacles_on = config.moving_obstacles_on  # Whether to have moving obstacles
         self.obs_num = 0
+        self.acbf_scale = config.scale            # for test scale of mpc-acbf
         if self.static_obstacles_on:
             self.obs = config.obs                # Static Obstacles
             self.obs_num = len(self.obs)
@@ -467,10 +468,10 @@ class MPC:
                     # 分配障碍物开始&结束运动的时间
                     if i == 0:
                         t_min = 0.0         # 0.0
-                        t_max = 6.0         # 3.0
+                        t_max = 3.0         # 3.0
                     elif i == 1:
-                        t_min = 0.0         # 2.5
-                        t_max = 6.0         # 8.0
+                        t_min = 2.5         # 2.5
+                        t_max = 6.0         # 7.0
                     
                     # 动态障碍物分段处理: 等待，结束，运行
                     if t_now < t_min:
@@ -531,7 +532,8 @@ class MPC:
         x0 = self.x0
         k = 0
         scale_s = []
-        while (np.linalg.norm(x0.reshape(5,)[:3]-np.array(self.goal).reshape(5,)[:3])>5e-2) & (k < self.sim_time):
+        # while (np.linalg.norm(x0.reshape(5,)[:3]-np.array(self.goal).reshape(5,)[:3])>5e-2) & (k < self.sim_time):
+        while(k < self.sim_time):
             # 更新系统参数
             print(k)
             if (self.controller == "MPC-ACBF"):
@@ -600,8 +602,8 @@ class MPC:
             if (np.dot(p_r, v_r) < 0.0) & (abs(np.linalg.norm(p_r)**2/np.dot(p_r, v_r))<2):
                 tau_max = -np.dot(p_r, v_r)/(np.linalg.norm(v_r))**2
                 # scale = -np.dot(p_r, v_r)/33
-                scale = 0.5 * np.linalg.norm(obs_v)/1.5
-                # tau_list.append(tau_max*0.4)
+                # scale = 0.5 * np.linalg.norm(obs_v)/1.5
+                scale = self.acbf_scale
                 # scale = 0.5
                 tau_list.append(tau_max*scale)
                 scale_list.append(scale)

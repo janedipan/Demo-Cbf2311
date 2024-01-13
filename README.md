@@ -51,29 +51,43 @@ Results
 ### Example
 Path comparison for different values of γ for MPC-CBF and with MPC-DC
 <p align="center" width="100%">
-    <img src="images/Display/path_comparisons.png" width="500">
+    <img src="images/Display/path_comparisons.png" width="600">
     <br>Path comparison
+</p>
+
+### Scenario0
+$$
+\begin{align}
+Ad \triangleq Cd(t+\tau) &:= \left\|\boldsymbol{p}^{ob}(t)-\boldsymbol{p}(t)+\tau \left(\boldsymbol{v}^{ob}(t)-\boldsymbol{v}(t)\right)\right\|_2 \\
+\tau &= \kappa \tau_{max}
+\end{align}
+$$
+
+动态障碍物最大速度为1.5m/s时，测试不同mpc-acbf的比例系数$\kappa$
+<p align="center" width="100%">
+    <img src="images/janedipan_backup/path_comparisons_by_scales.png" width="600">
+    <br>Path comparison0: moving_obs = [(-1.5, 5.0, 0.0, -0.35, 0.25),(-1.2, 6.5, 0.0, 1.0, 0.25)] (0～3.0s 2.5~7.0s)
 </p>
 
 ### Scenario1
 动态障碍物最大速度为0.5m/s的情况
 <p align="center" width="100%">
     <img src="images/janedipan_backup/path_comparisons1.png" width="500">
-    <br>Path comparison1: moving_obs = [(-0.5, 4.0, 0.0, -0.35, 0.25),(-0.5, 5.55, 0.0, 0.90, 0.25)] (0～6.0s 0.0~6.0s)
+    <br>Path comparison1: moving_obs = [(-0.5, 4.0, 0.0, -0.35, 0.25),(-0.5, 5.55, 0.0, 0.90, 0.25)] (0～7.0s 0.0~7.0s)
 </p>
 
 ### Scenario2
 动态障碍物最大速度为1.0m/s的情况
 <p align="center" width="100%">
     <img src="images/janedipan_backup/path_comparisons2.png" width="500">
-    <br>Path comparison2: moving_obs = [(-1.0, 4.5, 0.0, -0.35, 0.25),(-1.0, 5.5, 0.0, 1.0, 0.25)] (0～4.0s 3.0~8.0s)
+    <br>Path comparison2: moving_obs = [(-1.0, 4.5, 0.0, -0.35, 0.25),(-1.0, 5.5, 0.0, 1.0, 0.25)] (0～4.0s 3.0~7.0s)
 </p>
 
 ### Scenario3
 动态障碍物最大速度为1.5m/s的情况
 <p align="center" width="100%">
     <img src="images/janedipan_backup/path_comparisons3.png" width="500">
-    <br>Path comparison3: moving_obs = [(-1.5, 5.0, 0.0, -0.35, 0.25),(-1.2, 6.5, 0.0, 1.0, 0.25)] (0～3.0s 2.5~8.0s)
+    <br>Path comparison3: moving_obs = [(-1.5, 5.0, 0.0, -0.35, 0.25),(-1.2, 6.5, 0.0, 1.0, 0.25)] (0～3.0s 2.5~7.0s)
 </p>
 
 
@@ -92,3 +106,4 @@ References
 6. do_mpc通过`save_results()`,`load_results()`函数可以实现仿真数据的保存和加载，用于后续`matplotlib`，`seaborn`的数据处理。
 7. 目前MPC添加安全约束的方式是全局启用的，过于理想，实际上机器人对于障碍物的感知是存在范围限制的，因此是否添加安全约束因该根据情况实时判定——因此有必要引入一个不确定参数去修正这一情况；在调用`mpc.set_nl_cons()`函数时，可以用casadi.SX, MX表达式以修改安全约束表达式。-已完成
 8. 在`def tvp_fun_mpc(t_now)`设置时变变量的函数中，可以针对性的对障碍物进行分段操作，这样有利于最后图形保存。
+9. 在`util.py`中添加`def run_sim_for_four_controller()`以测试不同controllers的避障效果，添加`def run_sim_for_different_scale_in_ACBF()`以测试不同scale-kappa值的mpc-acbf的效果

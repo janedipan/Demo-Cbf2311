@@ -31,5 +31,12 @@ if __name__ == '__main__':
     # util.compare_controller_results(N=50, gamma=0.1)  # Compares total costs and min distances for each method
     # seaborn_test01()
 
-    util.run_sim_for_four_controller()                # 生成pkl数据
-    util.compare_results_by_four_controller()           # seaborn绘图
+    # -------------------------------------test 4 controller method
+    # util.run_sim_for_four_controller()                  # 生成pkl数据
+    # util.compare_results_by_four_controller()           # seaborn绘图
+
+    # -------------------------------------test different scale in MPC-ACBF controller
+    # scales = [0.0, 0.2, 0.4, 0.6, 0.8, 1.0]
+    scales = [0.0, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1.0]
+    util.run_sim_for_different_scale_in_ACBF(scales)        # 生成pkl数据
+    util.compare_results_by_acbf_scales(scales)

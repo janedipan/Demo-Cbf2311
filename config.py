@@ -89,10 +89,11 @@ elif scenario == 8:
     control_type = "setpoint"
     static_obstacles_on = False
     moving_obstacles_on = True
-    sim_time = 150
+    sim_time = 70
     gamma = 0.30
     safety_dist = 0.2 
     r = 0.2
+    scale = 0.5
     x0 = np.array([0, 0, 0.0])                  # Initial state
     x01 = np.array([0, 0, 0.0, 0.0, 0.0]) 
     goal = [6.5, 0, 0.0] 
@@ -103,17 +104,17 @@ Define moving obstacles as list of tuples (ax,bx,ay,by,radius)
 where each obstacle follows a linear trajectory x=ax*t+bx, y=ay*t+by
 '''  
 # scenario1 for janedipan
-moving_obs = [(-0.5, 4.0, 0.0, -0.35, 0.25),
-              (-0.5, 5.55, 0.0, 0.90, 0.25)] 
+# moving_obs = [(-0.5, 4.0, 0.0, -0.35, 0.25),
+#               (-0.5, 5.55, 0.0, 0.90, 0.25)] 
 
 # scenario2 for janedipan
 # moving_obs = [(-1.0, 4.5, 0.0, -0.35, 0.25),
 #               (-1.0, 5.5, 0.0, 1.0, 0.25)] 
 
 # scenario3 for janedipan
-# (-0.0, 5.0, 0.0, 0.80, 0.25)
-# moving_obs = [(-1.5, 5.0, 0.0, -0.35, 0.25),
-#               (-1.2, 6.5, 0.0, 1.0, 0.25)] 
+(-0.0, 5.0, 0.0, 0.80, 0.25)
+moving_obs = [(-1.5, 5.0, 0.0, -0.35, 0.25),
+              (-1.2, 6.5, 0.0, 1.0, 0.25)] 
 
 # ------------------------------------------------------------------------------
 if control_type == "setpoint":

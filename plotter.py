@@ -311,11 +311,11 @@ def plot_path_comparisons(results, gammas):
     plt.show()
 
 def plot_path_comparisons_by4controller(controllers:list,results:list, gamma:float):
-    sns.set_theme()
+    sns.set_theme(style="ticks")        # whitegrid
     fig, ax = plt.subplots(figsize=(9, 5))
     ax.set_xlabel('x/m')
     ax.set_ylabel('y/m')
-    plt.title("Robot path (scenario 3) ")
+    plt.title("Robot path (Scenario) ")
     plt.tight_layout()
     ax.axis('equal')    
 
@@ -326,7 +326,7 @@ def plot_path_comparisons_by4controller(controllers:list,results:list, gamma:flo
 
     for i in range(len(results)-1):
         X = results[i+1]['mpc']['_x']    
-        label = "MPC-{} (gamma={})".format(controllers[i], gamma)
+        label = "MPC-{}".format(controllers[i])
         ax.plot(X[:, 0], X[:, 1], color=colors[i+1],label=label)
     
     # Plot initial position
@@ -355,6 +355,44 @@ def plot_path_comparisons_by4controller(controllers:list,results:list, gamma:flo
     plt.legend(by_label.values(), by_label.keys(), loc="upper left")
 
     plt.savefig('images/path_comparisons.png')
+    plt.show()
+
+def plot_path_comparisons_by_scale(results, scales:list):
+    """Plots the robot path for each method and different gamma values."""
+    sns.set_theme(style="ticks")
+    fig, ax = plt.subplots(figsize=(9, 5))
+    ax.set_xlabel('x [m]')
+    ax.set_ylabel('y [m]')
+    plt.title("Robot path")
+    plt.tight_layout()
+    ax.axis('equal')
+
+    # Plot MPC-CBF paths for each gamma
+    for i in range(len(scales)):
+        X = results[i]['mpc']['_x']
+        label = "MPC-CBF ($\kappa={}$)".format(scales[i])
+        ax.plot(X[:, 0], X[:, 1], label=label)
+
+    # Plot initial position
+    X_dc = results[0]['mpc']['_x']
+    x0 = X_dc[0, :2]
+    ax.plot(x0[0], x0[1], 'b.', label="Initial position")
+
+    # Plot goal
+    ax.plot(config.goal[0], config.goal[1], 'g*', label="Goal")
+
+    # Plot static obstacles
+    if config.static_obstacles_on:
+        for x_obs, y_obs, r_obs in config.obs:
+            ax.add_patch(plt.Circle((x_obs, y_obs), r_obs + config.r, color='k'))
+
+    # Only show unique legends
+    # 这个代码段的目的是重新排列图例的顺序并设置其位置。通常情况下，它用于在图例中按照自定义的顺序显示标签，而不是按照它们最初添加到图形中的顺序。 
+    handles, labels = plt.gca().get_legend_handles_labels()
+    by_label = dict(zip(labels, handles))
+    plt.legend(by_label.values(), by_label.keys(), loc="upper left")
+
+    plt.savefig('images/path_comparisons_by_scales.png')
     plt.show()
 
 def plot_cost_comparisons(costs_dc, costs_cbf, gamma):

@@ -2,7 +2,7 @@ from do_mpc.data import save_results, load_results
 
 import config
 from mpc_cbf import MPC
-from plotter import plot_path_comparisons, plot_cost_comparisons, plot_min_distance_comparison, plot_path_comparisons_by4controller
+from plotter import plot_path_comparisons, plot_cost_comparisons, plot_min_distance_comparison, plot_path_comparisons_by4controller, plot_path_comparisons_by_scale
 
 
 def save_mpc_results(controller):
@@ -17,6 +17,11 @@ def save_mpc_results(controller):
     """
     save_results([controller.mpc, controller.simulator], result_name=filename)
 
+def save_mpc_acbf_results(controller):
+    """Save MPC-ACBF results in pickle file."""
+    filename = config.controller + '_' + config.control_type + '_scale' + str(config.scale)
+
+    save_results([controller.mpc, controller.simulator], result_name=filename)
 
 def load_mpc_results(filename):
     """Load results from pickle file."""
@@ -80,6 +85,12 @@ def run_sim():
     controller.run_simulation()   # Run closed-loop control simulation
     save_mpc_results(controller)  # Store results
 
+def run_sim_acbf():
+    """Runs a simulation and saves the results."""
+    controller = MPC()            # Define controller
+    controller.run_simulation()   # Run closed-loop control simulation
+    save_mpc_acbf_results(controller)  # Store results
+
 def run_multiple_experiments(N):
     """Runs N experiments for each method."""
 
@@ -124,6 +135,14 @@ def run_sim_for_four_controller(scenario=8, gamma=0.3, safety_dist=0.2):
     config.controller = "MPC-ACBF"
     run_sim()
 
+def run_sim_for_different_scale_in_ACBF(scales:list, scenario=8, gamma=0.3, safety_dist=0.2):
+    config.scenario = scenario
+    config.controller = "MPC-ACBF"
+    for i in scales:
+        config.scale = i
+        run_sim_acbf()
+    pass
+
 def compare_results_by_gamma():
     """Runs simulations and plots path for each method and different gamma values."""
 
@@ -152,3 +171,11 @@ def compare_results_by_four_controller():
         results.append(load_mpc_results(filename_cbf))
     
     plot_path_comparisons_by4controller(controllers, results, ga)
+
+def compare_results_by_acbf_scales(scales:list):
+    list = scales
+    results = []
+    for i in list:
+        filename_cbf = "MPC-ACBF_setpoint_scale"+str(i)
+        results.append(load_mpc_results(filename_cbf))
+    plot_path_comparisons_by_scale(results, list)
