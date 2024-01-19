@@ -60,7 +60,7 @@ class Plotter:
         ax[1].legend(lines, ['v (linear velocity)', '$\omega$ (angular velocity)'], title='controls')
 
         # Plot predictions at specific time index t_ind
-        mpc_graphics.plot_results(t_ind=t_ind)
+        # mpc_graphics.plot_results(t_ind=t_ind)
         mpc_graphics.plot_predictions(t_ind=t_ind)
 
         ax[1].set_xlabel('Time [s]')
@@ -158,14 +158,20 @@ class Plotter:
                     cbfs.append(h)
 
             cbfs_mov = []
+            d_cbfs_mov = []
             if self.controller.moving_obstacles_on:
                 for i in range(len(self.controller.moving_obs)):
                     h = []
+                    dh = []
                     # for x in self.mpc.data['_x']:
                     for j in range(len(self.mpc.data['_x'])):
                         obs = (self.mpc.data['_tvp', 'x_moving_obs'+str(i)][j], self.mpc.data['_tvp', 'y_moving_obs'+str(i)][j], self.controller.moving_obs[i][4])
-                        h.append(self.controller.h(self.mpc.data['_x'][j], obs))
+                        h.append(self.controller.h(self.mpc.data['_x'][j], obs)+0.2)
+                        h1 = h[1:]
+                        h1.append(h[-1])
+                        dh = (np.array(h1)-np.array(h))/config.Ts 
                     cbfs_mov.append(h)
+                    d_cbfs_mov.append(dh)
 
             sns.set_theme()
             fig, ax = plt.subplots(figsize=(9, 5))
@@ -173,6 +179,9 @@ class Plotter:
                 ax.plot(cbfs[i], label="h_obs"+str(i))
             for i in range(len(cbfs_mov)):
                 ax.plot(cbfs_mov[i], label="h_mov_obs"+str(i))
+            for i in range(len(d_cbfs_mov)):
+                ax.plot(d_cbfs_mov[i], label="dh_mov_obs"+str(i))
+
             plt.axhline(y=0, color='k', linestyle='--')
             ax.set_xlabel('Time [s]')
             ax.set_ylabel('h [m]')
@@ -311,7 +320,7 @@ def plot_path_comparisons(results, gammas):
     plt.show()
 
 def plot_path_comparisons_by4controller(controllers:list,results:list, gamma:float):
-    sns.set_theme(style="ticks")        # whitegrid
+    sns.set_theme()        # whitegrid
     fig, ax = plt.subplots(figsize=(9, 5))
     ax.set_xlabel('x/m')
     ax.set_ylabel('y/m')
@@ -320,9 +329,9 @@ def plot_path_comparisons_by4controller(controllers:list,results:list, gamma:flo
     ax.axis('equal')    
 
     # 使用plot绘制折线图
-    colors = ['#04364A','#1AACAC','#E9B824','#EF4040']
+    colors = ['#9EDDFF','#219C90','#E9B824','#D83F31']
     X_dc = results[0]['mpc']['_x']
-    ax.plot(X_dc[:, 0], X_dc[:, 1], color=colors[0], linestyle='--', label="MPC-DC")
+    ax.plot(X_dc[:, 0], X_dc[:, 1], color=colors[0], label="MPC-DC")
 
     for i in range(len(results)-1):
         X = results[i+1]['mpc']['_x']    
@@ -347,53 +356,16 @@ def plot_path_comparisons_by4controller(controllers:list,results:list, gamma:flo
                                     config.moving_obs[i][4], color='k'))
             # Plot path
             ax.plot(results[-2]['mpc']['_tvp', 'x_moving_obs'+str(i)], results[-2]['mpc']['_tvp', 'y_moving_obs'+str(i)],
-                    'k:', label="Moving Obstacle path", alpha=0.3)
+                    'k--', label="Obstacle path", alpha=0.6)
 
     # Only show unique legends
     handles, labels = plt.gca().get_legend_handles_labels()
     by_label = dict(zip(labels, handles))
-    plt.legend(by_label.values(), by_label.keys(), loc="upper left")
+    plt.legend(by_label.values(), by_label.keys(), loc="lower right")
 
     plt.savefig('images/path_comparisons.png')
     plt.show()
 
-def plot_path_comparisons_by_scale(results, scales:list):
-    """Plots the robot path for each method and different gamma values."""
-    sns.set_theme(style="ticks")
-    fig, ax = plt.subplots(figsize=(9, 5))
-    ax.set_xlabel('x [m]')
-    ax.set_ylabel('y [m]')
-    plt.title("Robot path")
-    plt.tight_layout()
-    ax.axis('equal')
-
-    # Plot MPC-CBF paths for each gamma
-    for i in range(len(scales)):
-        X = results[i]['mpc']['_x']
-        label = "MPC-CBF ($\kappa={}$)".format(scales[i])
-        ax.plot(X[:, 0], X[:, 1], label=label)
-
-    # Plot initial position
-    X_dc = results[0]['mpc']['_x']
-    x0 = X_dc[0, :2]
-    ax.plot(x0[0], x0[1], 'b.', label="Initial position")
-
-    # Plot goal
-    ax.plot(config.goal[0], config.goal[1], 'g*', label="Goal")
-
-    # Plot static obstacles
-    if config.static_obstacles_on:
-        for x_obs, y_obs, r_obs in config.obs:
-            ax.add_patch(plt.Circle((x_obs, y_obs), r_obs + config.r, color='k'))
-
-    # Only show unique legends
-    # 这个代码段的目的是重新排列图例的顺序并设置其位置。通常情况下，它用于在图例中按照自定义的顺序显示标签，而不是按照它们最初添加到图形中的顺序。 
-    handles, labels = plt.gca().get_legend_handles_labels()
-    by_label = dict(zip(labels, handles))
-    plt.legend(by_label.values(), by_label.keys(), loc="upper left")
-
-    plt.savefig('images/path_comparisons_by_scales.png')
-    plt.show()
 
 def plot_cost_comparisons(costs_dc, costs_cbf, gamma):
     """Plots the objective function cost for each method for all experiments."""

@@ -3,40 +3,23 @@ import seaborn as sns
 import matplotlib as mpl
 import matplotlib.pyplot as plt
 
-def seaborn_test01():
-    sns.set_theme(style="ticks")
+import config
 
-    diamonds = sns.load_dataset("diamonds")
+# -------------------------------------test 4 controller method
+def run_sim_4controllers():
+    util.run_sim_for_four_controller()                  # 生成pkl数据
+    util.compare_results_by_four_controller()           # seaborn绘图    
 
-    f, ax = plt.subplots(figsize=(7, 5))
-    sns.despine(f)
-
-    sns.histplot(
-        diamonds,
-        x="price", hue="cut",
-        multiple="stack",
-        palette="light:m_r",
-        edgecolor=".3",
-        linewidth=.5,
-        log_scale=True,
-    )
-    ax.xaxis.set_major_formatter(mpl.ticker.ScalarFormatter())
-    ax.set_xticks([500, 1000, 2000, 5000, 10000])
-    plt.show()
+def trans_dompc_data():
+    infile_list = ["DC", "SCBF", "DCBF", "ACBF"]
+    file_path = "./results/scenario1/"
+    for i in range(len(infile_list)):
+        infile_name = "MPC-" + infile_list[i] + "_setpoint"
+        outfile_name = "Excel-" + infile_list[i]
+        util.trans_mpc2excel(file_path, infile_name, outfile_name)
+    pass
 
 if __name__ == '__main__':
-
-    # util.compare_results_by_gamma()                   # Compares the path for each method and gamma value
-    # util.run_multiple_experiments(N=50)               # Runs N experiments for each method
-    # util.compare_controller_results(N=50, gamma=0.1)  # Compares total costs and min distances for each method
-    # seaborn_test01()
-
-    # -------------------------------------test 4 controller method
-    # util.run_sim_for_four_controller()                  # 生成pkl数据
-    # util.compare_results_by_four_controller()           # seaborn绘图
-
-    # -------------------------------------test different scale in MPC-ACBF controller
-    # scales = [0.0, 0.2, 0.4, 0.6, 0.8, 1.0]
-    scales = [0.0, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1.0]
-    util.run_sim_for_different_scale_in_ACBF(scales)        # 生成pkl数据
-    util.compare_results_by_acbf_scales(scales)
+    run_sim_4controllers()
+    # trans_dompc_data()
+    pass

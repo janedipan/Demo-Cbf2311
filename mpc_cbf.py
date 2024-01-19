@@ -74,6 +74,8 @@ class MPC:
             if self.obs_num == 2:
                 model.set_variable(var_type='_p', var_name='tau0')
                 model.set_variable(var_type='_p', var_name='tau1')
+            elif self.obs_num == 1:
+                model.set_variable(var_type='_p', var_name='tau0')
 
 
         # State Space matrices
@@ -191,6 +193,8 @@ class MPC:
             if self.obs_num == 2:
                 mpc.set_uncertainty_values(tau0=np.zeros(1))
                 mpc.set_uncertainty_values(tau1=np.zeros(1))
+            elif self.obs_num == 1:
+                mpc.set_uncertainty_values(tau0=np.zeros(1))
 
         # If trajectory tracking or moving obstacles: Define time-varying parameters
         # 调用mpc.set_tvp_fun()函数-时变变量
@@ -468,7 +472,7 @@ class MPC:
                     # 分配障碍物开始&结束运动的时间
                     if i == 0:
                         t_min = 0.0         # 0.0
-                        t_max = 3.0         # 3.0
+                        t_max = 5.0         # 3.0: 4-5
                     elif i == 1:
                         t_min = 2.5         # 2.5
                         t_max = 6.0         # 7.0
@@ -568,8 +572,11 @@ class MPC:
 
                 p_template = self.updata_parameter_for_mpc(scale_s, _k=k, _ro_state=np.array([i.sum() for i in x0]), _obs_state=obs_list)
                 print(p_template)
-                self.mpc.set_uncertainty_values(tau0=np.array([p_template[0]]), 
-                                                tau1=np.array([p_template[1]]))
+                if self.obs_num == 2:
+                    self.mpc.set_uncertainty_values(tau0=np.array([p_template[0]]), 
+                                                    tau1=np.array([p_template[1]]))
+                elif self.obs_num == 1:
+                    self.mpc.set_uncertainty_values(tau0=np.array([p_template[0]]))
             # 输入当前状态量，求解最优控制量，只有执行以下步骤才会将mpc.data数据才会更新
             u0 = self.mpc.make_step(x0)
             y_next = self.simulator.make_step(u0)
@@ -580,6 +587,7 @@ class MPC:
         print('-----------------mpc controller is: {} ------------------'.format(self.controller))
         print(self.mpc.data.data_fields)
         print(self.mpc.data['_p'])
+        # print(self.mpc.data['_u'])
         # print(scale_s)
 
     def updata_parameter_for_mpc(self, list_s:list, _k:int, _ro_state:np.ndarray, _obs_state:list) -> list:
@@ -598,18 +606,27 @@ class MPC:
             # print('obs_v: ', obs_v)
             # print('p_r: ',p_r)
             # print('v_r: ',v_r)
-            # 障碍物的风险判断: 1.当且危险的障碍物 2.检测距离5.5米 3.碰撞时间为2s 会使用tau值，否则为0
-            if (np.dot(p_r, v_r) < 0.0) & (abs(np.linalg.norm(p_r)**2/np.dot(p_r, v_r))<2):
-                tau_max = -np.dot(p_r, v_r)/(np.linalg.norm(v_r))**2
-                # scale = -np.dot(p_r, v_r)/33
-                # scale = 0.5 * np.linalg.norm(obs_v)/1.5
-                scale = self.acbf_scale
-                # scale = 0.5
-                tau_list.append(tau_max*scale)
+            # 障碍物的风险判断: 1.当且危险的障碍物 2.检测距离5.0米 3.碰撞时间为2s 会使用tau值，否则为0
+            # if (np.dot(p_r, v_r) < 0.0) & (abs(np.linalg.norm(p_r)**2/np.dot(p_r, v_r))<2.0):
+            if (np.dot(p_r, v_r) < 0.0) & ((np.linalg.norm(p_r)-config.r-config.moving_obs[0][-1])*np.linalg.norm(p_r)/(-np.dot(p_r, v_r))<2.0):
+                # if (_k>0)&(_k<17):
+                tau_max = (np.linalg.norm(p_r)-config.r-config.moving_obs[0][-1])*np.linalg.norm(p_r)/(-np.dot(p_r, v_r))                   
+                # scale = self.acbf_scale
+                tau_max = min(tau_max, 0.65)
+                obs_scale = 1-(abs(np.dot(p_r,obs_v)/np.linalg.norm(p_r)/1.5)-1)**2
+                ro_scale = 1-(np.linalg.norm(p_r)/5-1)**2
+                scale = obs_scale * ro_scale
+                result = round(tau_max*scale, 3)
+                tau_list.append(result)
+                
                 scale_list.append(scale)
+                # else:
+                #     tau_list.append(0.0)
+                #     scale_list.append(0.0)
             else:
                 tau_list.append(0.0)
                 scale_list.append(0.0)
+        scale_list.extend(tau_list)
         list_s.append(scale_list)
-        print(list_s)
+        print((list_s))
         return tau_list

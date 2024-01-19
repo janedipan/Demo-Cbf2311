@@ -96,7 +96,7 @@ References
 * [[1] J. Zeng, B. Zhang, K. Sreenath, Safety-critical model predictive control with discrete-time control barrier function, 2021 American Control Conference (ACC) (2020) 3882–3889.]()
 * [[2] Z. Jian, Z. Yan, X. Lei, Z.-R. Lu, B. Lan, X. Wang, B. Liang, Dynamic control barrier function-based model predictive control to safety-critical obstacle-avoidance of mobile robot, 2023 IEEE International Conference on Robotics and Automation (ICRA) (2022) 3679–3685.]()
 
-修改思路
+MPC-CBF修改思路(240102~240111)
 ---
 1. 在`mpc_cbf.py`文件中，有静态障碍物，动态障碍物两个标志，影响`define_mpc()`中Add safety constraints的部分，一部分处理静态障碍物的情况，一部分处理动态障碍物的情况。
 2. 需要在`config.py`文件中修改系统状态量为$[x,y,\theta] \to [x,y,\theta,\dot{x},\dot{y}]$，相应系统状态方程的系统矩阵，控制矩阵还有包括mpc的Q矩阵需要修改。
@@ -107,3 +107,8 @@ References
 7. 目前MPC添加安全约束的方式是全局启用的，过于理想，实际上机器人对于障碍物的感知是存在范围限制的，因此是否添加安全约束因该根据情况实时判定——因此有必要引入一个不确定参数去修正这一情况；在调用`mpc.set_nl_cons()`函数时，可以用casadi.SX, MX表达式以修改安全约束表达式。-已完成
 8. 在`def tvp_fun_mpc(t_now)`设置时变变量的函数中，可以针对性的对障碍物进行分段操作，这样有利于最后图形保存。
 9. 在`util.py`中添加`def run_sim_for_four_controller()`以测试不同controllers的避障效果，添加`def run_sim_for_different_scale_in_ACBF()`以测试不同scale-kappa值的mpc-acbf的效果
+
+数据处理思路(240114~)
+---
+- 添加`./uitil.py`加载do_mpc仿真数据，然后使用seaborn，matplotlib库进行数据处理
+- 添加`./scripts/`文件夹用于存放绘制图像的脚本
