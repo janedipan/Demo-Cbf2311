@@ -55,20 +55,6 @@ Path comparison for different values of γ for MPC-CBF and with MPC-DC
     <br>Path comparison
 </p>
 
-### Scenario0
-$$
-\begin{align}
-Ad \triangleq Cd(t+\tau) &:= \left\|\boldsymbol{p}^{ob}(t)-\boldsymbol{p}(t)+\tau \left(\boldsymbol{v}^{ob}(t)-\boldsymbol{v}(t)\right)\right\|_2 \\
-\tau &= \kappa \tau_{max}
-\end{align}
-$$
-
-动态障碍物最大速度为1.5m/s时，测试不同mpc-acbf的比例系数$\kappa$
-<p align="center" width="100%">
-    <img src="images/janedipan_backup/path_comparisons_by_scales.png" width="600">
-    <br>Path comparison0: moving_obs = [(-1.5, 5.0, 0.0, -0.35, 0.25),(-1.2, 6.5, 0.0, 1.0, 0.25)] (0～3.0s 2.5~7.0s)
-</p>
-
 ### Scenario1
 动态障碍物最大速度为0.5m/s的情况
 <p align="center" width="100%">
