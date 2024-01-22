@@ -6,7 +6,7 @@ from do_mpc.data import save_results, load_results
 
 import config
 from mpc_cbf import MPC
-from plotter import plot_path_comparisons, plot_cost_comparisons, plot_min_distance_comparison, plot_path_comparisons_by4controller, plot_path_comparisons_by_scale
+from plotter import plot_path_comparisons, plot_cost_comparisons, plot_min_distance_comparison, plot_path_comparisons_by4controller
 
 
 # 保存成excel文件 每一行所需要的属性
