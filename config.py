@@ -90,15 +90,15 @@ elif scenario == 8:
     control_type = "setpoint"
     static_obstacles_on = False
     moving_obstacles_on = True
-    sim_time = 70
+    sim_time = 80
     gamma = 0.30
     safety_dist = 0.2 
     r = 0.2
     scale = 0.53
     x0 = np.array([0, 0, 0.0])                  # Initial state
     x01 = np.array([0, 0, 0.0, 0.0, 0.0]) 
-    goal = [6.5, 0, 0.0] 
-    goal1 = [6.5, 0, 0.0, 0.0, 0.0]
+    goal = [6.0, 0, 0.0] 
+    goal1 = [6.0, 0, 0.0, 0.0, 0.0]
 
 '''
 Define moving obstacles as list of tuples (ax,bx,ay,by,radius)
@@ -119,8 +119,8 @@ where each obstacle follows a linear trajectory x=ax*t+bx, y=ay*t+by
 
 # scenario for signal test
 # moving_obs = [(-1.5, 5.5, 0.0, -0.35, 0.3)]
-moving_obs = [(-1.0, 5.5, 0.0, -0.35, 0.3)]
-# moving_obs = [(-0.5, 5.5, 0.0, -0.35, 0.3)]
+# moving_obs = [(-1.0, 5.5, 0.0, -0.35, 0.3)]
+moving_obs = [(-0.5, 5.5, 0.0, -0.35, 0.3)]
 
 # ------------------------------------------------------------------------------
 if control_type == "setpoint":

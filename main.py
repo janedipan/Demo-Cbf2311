@@ -23,10 +23,9 @@ def main():
     plotter.plot_results()          # trajectories.png
     plotter.plot_path()             # path.png
     plotter.plot_cbf()              # distance.png
-    plotter.plot_predictions()
+    # plotter.plot_predictions(15)
     # plotter.create_trajectories_animation()
     plotter.create_path_animation()
-    
 
     # Store results
     # util.save_mpc_results(controller)
